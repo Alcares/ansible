@@ -1,0 +1,35 @@
+---
+
+- hosts: all
+  become: true
+  pre_tasks:
+
+    - name: update package manager and cache Ubuntu
+      tags: always, ubuntu
+      package:
+        upgrade: dist
+        update_cache: yes
+      when: ansible_distribution == "Ubuntu"
+
+
+- hosts: web_servers
+  become: true
+  tasks:
+
+    - name: install apache package with PHP support
+      tags: ubuntu, php, apache
+      package:
+        name:
+          - "{{ apache_package }}"
+          - "{{ php_package }}"
+        state: latest
+        update_cache: yes
+
+- hosts: db_servers
+  become: true
+  tasks:
+
+    - name: install mariadb package
+      apt:
+        name: mariadb-server
+        state: latest
