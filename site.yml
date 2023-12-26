@@ -4,26 +4,68 @@
   become: true
   pre_tasks:
 
-    - name: update package manager and cache Ubuntu
+    - name: update package manager cache Ubuntu
       tags: always, ubuntu
       package:
-        upgrade: dist
-        update_cache: yes
+        update_cache: true
+      changed_when: false
       when: ansible_distribution == "Ubuntu"
 
+- hosts: all
+  become: true
+  tasks:
+
+    - name: add ssh key for ansible-node user
+      tags: always
+      authorized_key:
+        user: ansible-node
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFhYkZrtCu9EBXt4neMfAPWdOK7rpSQVuIT8qFI59lip Connection for Ansible"
 
 - hosts: web_servers
   become: true
   tasks:
 
     - name: install apache package with PHP support
-      tags: ubuntu, php, apache
+      tags: apache, web
       package:
         name:
           - "{{ apache_package }}"
           - "{{ php_package }}"
         state: latest
-        update_cache: yes
+        update_cache: true
+
+    - name: start httpd (CentOS)
+      tags: service, centos, httpd
+      service:
+        name: httpd
+        state: started
+        enabled: true
+      when: ansible_distribution == "CentOS"
+
+    - name: change e-mail address for server admin
+      tags: centos, httpd
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^ServerAdmin'
+        line: ServerAdmin somebody@somewhere.net
+      when: ansible_distribution == "CentOS"
+      register: httpd
+
+    - name: restart httpd (CentOS)
+      tags: httpd, web, centos
+      service:
+        name: httpd
+        state: restarted
+      when: httpd.changed
+
+    - name: copy default html file
+      tags: apache, web
+      copy:
+        src: default_site.html
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: 0644
 
 - hosts: db_servers
   become: true
@@ -33,3 +75,22 @@
       apt:
         name: mariadb-server
         state: latest
+
+
+- hosts: workstations
+  tags: workstations
+  become: true
+  tasks:
+
+    - name: insall unzip
+      package:
+        name: unzip
+
+    - name: install terraform
+      unarchive:
+        src: https://releases.hashicorp.com/terraform/0.12.28/terraform_0.12.28_linux _amd64.zip
+        dest: /urs/local/bin
+        remote_src: true
+        mode: 0755
+        owner: root
+        group: root

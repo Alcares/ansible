@@ -1,0 +1,38 @@
+---
+
+- hosts: all
+  become: true
+  pre_tasks:
+
+    - name: update package manager and cache Ubuntu
+      tags: always, ubuntu
+      package:
+        upgrade: dist
+        update_cache: true
+      when: ansible_distribution == "Ubuntu"
+
+- hosts: all
+  become: true
+  tasks:
+
+    - name: create ansible-node user
+      tags: always
+      user:
+        name: ansible-node
+        groups: root
+
+    - name: add ssh key for ansible-node user
+      tags: always
+      authorized_key:
+        user: ansible-node
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFhYkZrtCu9EBXt4neMfAPWdOK7rpSQVuIT8qFI59lip Connection for Ansible"
+
+    - name: add sudeors file for ansible-node user
+      tags: alwasy    
+      copy:
+        src: sudoer_ansible-node
+        dest: /etc/sudoers.d/ansible-node
+        owner: root 
+        group: root
+        mode: 0440
+
